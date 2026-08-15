@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const [appSource, stylesSource] = await Promise.all([
+  readFile(new URL('../src/App.jsx', import.meta.url), 'utf8'),
+  readFile(new URL('../src/styles.css', import.meta.url), 'utf8'),
+]);
+
+test('message rows render the sender avatar on the correct side', () => {
+  assert.match(appSource, /const sender = conversation\.members\.find\(\(member\) => member\.id === message\.senderId\)/);
+  assert.match(appSource, /<Avatar member=\{sender\} size="message" \/>/);
+  assert.match(stylesSource, /\.message-row \{[^}]*gap: 10px;/s);
+  assert.match(stylesSource, /\.message-row--own \{ flex-direction: row-reverse; \}/);
+});
+
+test('sent bubbles stay cream while received bubbles follow the selected palette', () => {
+  assert.match(stylesSource, /--partner-bubble: #2f6b59;/);
+  assert.match(stylesSource, /--own-bubble: #fffefb;/);
+  assert.match(stylesSource, /\[data-palette="sunset"\][^{]*\{[^}]*--partner-bubble: #713f61;/s);
+  assert.match(stylesSource, /\[data-palette="lagoon"\][^{]*\{[^}]*--partner-bubble: #176b87;/s);
+  assert.match(stylesSource, /\.message-bubble \{[^}]*background: var\(--partner-bubble\);/s);
+  assert.match(stylesSource, /\.message-row--own \.message-bubble \{[^}]*background: var\(--own-bubble\);/s);
+});
