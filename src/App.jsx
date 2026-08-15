@@ -3,6 +3,18 @@ import { io } from 'socket.io-client';
 import { api } from './api.js';
 
 const reactionChoices = ['❤️', '👍', '😂', '😮', '😢', '🎉'];
+const nookPalettes = [
+  { id: 'garden', label: 'Garden', colors: ['#2f6b59', '#f0a27d', '#f6cf67'] },
+  { id: 'sunset', label: 'Sunset', colors: ['#713f61', '#ed765e', '#ffc857'] },
+  { id: 'lagoon', label: 'Lagoon', colors: ['#176b87', '#38a89d', '#ffcb69'] },
+];
+
+const conversationPrompts = [
+  'What made you smile today?',
+  'One tiny thing I appreciate about you…',
+  'Want to plan a little adventure?',
+  'My favorite moment with you lately was…',
+];
 
 function Mark() {
   return <div className="mark" aria-hidden="true"><span /><span /></div>;
@@ -152,6 +164,9 @@ function Conversation({ user, onLogout }) {
   const [unread, setUnread] = useState(0);
   const [readStates, setReadStates] = useState({});
   const [theme, setTheme] = useState(() => localStorage.getItem('duonook-theme') ?? 'light');
+  const [palette, setPalette] = useState(() => localStorage.getItem('duonook-palette') ?? 'garden');
+  const [focusMode, setFocusMode] = useState(false);
+  const [showPaletteMenu, setShowPaletteMenu] = useState(false);
   const socketRef = useRef(null);
   const typingTimerRef = useRef(null);
   const partnerTypingTimerRef = useRef(null);
@@ -173,6 +188,11 @@ function Conversation({ user, onLogout }) {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('duonook-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.palette = palette;
+    localStorage.setItem('duonook-palette', palette);
+  }, [palette]);
 
   useEffect(() => {
     let active = true;
@@ -328,20 +348,44 @@ function Conversation({ user, onLogout }) {
   }
 
   const partnerReadId = partner ? readStates[partner.id] ?? 0 : 0;
+  const todayMessageCount = messages.filter((message) => new Date(message.createdAt).toDateString() === new Date().toDateString()).length;
+  const prompt = conversationPrompts[new Date().getDate() % conversationPrompts.length];
+
+  function usePrompt(text) {
+    setDraft((current) => current ? `${current}\n${text}` : text);
+  }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${focusMode ? 'app-shell--focus' : ''}`}>
       <aside className="sidebar">
         <div className="brand"><Mark /><span>DuoNook</span></div>
-        <div className="sidebar-label">Your conversation</div>
-        <button className="conversation-tile conversation-tile--active" type="button">
-          <div className="paired-avatars">{conversation?.members.map((member) => <Avatar key={member.id} member={member} size="small" online={presence[member.id]?.online} />)}</div>
-          <span><strong>{conversation?.name ?? 'Our nook'}</strong><small>{messages.at(-1)?.body ?? 'A quiet place for just us'}</small></span>
-          {unread > 0 && <b className="unread-badge">{unread}</b>}
-        </button>
+        <div className="nook-portrait" aria-label="The two members of this nook">
+          <div className="paired-avatars paired-avatars--large">{conversation?.members.map((member) => <Avatar key={member.id} member={member} size="regular" online={presence[member.id]?.online} />)}</div>
+          <p className="eyebrow">Just the two of you</p>
+          <h2>{conversation?.name ?? 'Our nook'}</h2>
+          <p className="nook-subtitle">A small, private place to keep close.</p>
+          {unread > 0 && <b className="unread-badge">{unread} new</b>}
+        </div>
+
+        <div className="nook-card daily-card">
+          <span className="card-spark" aria-hidden="true">✦</span>
+          <div><small>Today in your nook</small><strong>{todayMessageCount} {todayMessageCount === 1 ? 'little moment' : 'little moments'}</strong></div>
+        </div>
+
+        <div className="nook-card prompt-card">
+          <small>A question for us</small>
+          <p>{prompt}</p>
+          <button type="button" onClick={() => usePrompt(prompt)}>Answer this <span aria-hidden="true">→</span></button>
+        </div>
         <div className="sidebar-tools">
-          <button type="button" onClick={() => setTheme((value) => value === 'light' ? 'dark' : 'light')}><span>{theme === 'light' ? '☾' : '☀'}</span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</button>
-          <button type="button" onClick={enableNotifications}><span>♢</span>Notifications</button>
+          <button type="button" onClick={() => setShowPaletteMenu((value) => !value)} aria-expanded={showPaletteMenu}><span className="tool-icon" aria-hidden="true">✺</span>Change the mood</button>
+          {showPaletteMenu && <div className="palette-picker" aria-label="Choose a color mood">{nookPalettes.map((option) => (
+            <button key={option.id} type="button" className={palette === option.id ? 'palette-option palette-option--active' : 'palette-option'} onClick={() => setPalette(option.id)} aria-pressed={palette === option.id}>
+              <span className="palette-dots" aria-hidden="true">{option.colors.map((color) => <i key={color} style={{ background: color }} />)}</span>{option.label}
+            </button>
+          ))}</div>}
+          <button type="button" onClick={() => setTheme((value) => value === 'light' ? 'dark' : 'light')}><span className="tool-icon" aria-hidden="true">{theme === 'light' ? '☾' : '☀'}</span>{theme === 'light' ? 'Evening glow' : 'Daylight'}</button>
+          <button type="button" onClick={enableNotifications}><span className="tool-icon" aria-hidden="true">♢</span>Gentle notifications</button>
         </div>
         <div className="sidebar-profile">
           <Avatar member={user} size="small" online />
@@ -354,14 +398,16 @@ function Conversation({ user, onLogout }) {
         <header className="chat-header">
           <div className="mobile-mark"><Mark /></div>
           {partner ? <Avatar member={partner} size="small" online={partnerPresence?.online} /> : <div className="avatar-placeholder" />}
-          <div className="header-person"><h1>{partner?.displayName ?? 'Your person'}</h1><p className={partnerTyping ? 'typing-copy' : ''}>{partnerTyping ? 'Typing…' : presenceText(partnerPresence, partner)}</p></div>
+          <div className="header-person"><span className="header-kicker">Your person</span><h1>{partner?.displayName ?? 'Your person'}</h1><p className={partnerTyping ? 'typing-copy' : ''}>{partnerTyping ? 'Typing something to you…' : presenceText(partnerPresence, partner)}</p></div>
+          <div className="header-center" aria-hidden="true"><span>Our little corner</span><i>♥</i></div>
+          <button className="header-pill focus-toggle" type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode}>{focusMode ? 'Show nook' : 'Focus mode'}</button>
           <button className="mobile-tool" type="button" onClick={() => setTheme((value) => value === 'light' ? 'dark' : 'light')} aria-label="Toggle color theme">{theme === 'light' ? '☾' : '☀'}</button>
           <button className="mobile-tool" type="button" onClick={logout} aria-label="Sign out">↗</button>
         </header>
 
         <div className="message-space" aria-live="polite">
           {loading ? <div className="conversation-loading"><Mark /><span>Gathering your messages…</span></div> : messages.length === 0 ? (
-            <div className="empty-state"><div className="empty-mark"><Mark /></div><p className="eyebrow">The start of your nook</p><h2>Say something small.</h2><p>A hello, a lunch idea, or just a little thought. Your shared history will live right here.</p></div>
+            <div className="empty-state"><div className="empty-mark"><Mark /></div><p className="eyebrow">The start of your nook</p><h2>Leave a little note.</h2><p>A hello, a lunch idea, or just a tiny thought. This space belongs only to the two of you.</p><button type="button" onClick={() => usePrompt(prompt)}>Try today’s question</button></div>
           ) : (
             <div className="message-list">
               {messages.map((message, index) => {
@@ -380,6 +426,7 @@ function Conversation({ user, onLogout }) {
         <div className="composer-wrap">
           {error && <div className="conversation-error" role="alert"><span>{error}</span><button type="button" onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
           <form className="composer" onSubmit={sendMessage}>
+            <button type="button" className="composer-love" onClick={() => usePrompt('Thinking of you ❤️')} aria-label="Add a thinking of you note">♥</button>
             <textarea value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) sendMessage(event); }} placeholder={partner ? `Message ${partner.displayName}` : 'Write a message'} aria-label="Message" maxLength={2000} rows={1} disabled={loading || !conversation} />
             <span className={`character-count ${draft.length > 1800 ? 'character-count--visible' : ''}`}>{draft.length}/2000</span>
             <button type="submit" className="send-button" aria-label="Send message" disabled={!draft.trim() || sending}>{sending ? '…' : '↑'}</button>
