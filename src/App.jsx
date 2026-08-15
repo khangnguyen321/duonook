@@ -167,6 +167,12 @@ function Conversation({ user, onLogout }) {
   const [palette, setPalette] = useState(() => localStorage.getItem('duonook-palette') ?? 'garden');
   const [focusMode, setFocusMode] = useState(false);
   const [showPaletteMenu, setShowPaletteMenu] = useState(false);
+  const [chatWidth, setChatWidth] = useState(() => {
+    const savedWidth = Number(localStorage.getItem('duonook-chat-width'));
+    return Number.isFinite(savedWidth) && savedWidth >= 18 && savedWidth <= 55 ? savedWidth : 20;
+  });
+  const [resizingChat, setResizingChat] = useState(false);
+  const shellRef = useRef(null);
   const socketRef = useRef(null);
   const typingTimerRef = useRef(null);
   const partnerTypingTimerRef = useRef(null);
@@ -193,6 +199,40 @@ function Conversation({ user, onLogout }) {
     document.documentElement.dataset.palette = palette;
     localStorage.setItem('duonook-palette', palette);
   }, [palette]);
+
+  useEffect(() => {
+    localStorage.setItem('duonook-chat-width', String(chatWidth));
+  }, [chatWidth]);
+
+  useEffect(() => {
+    if (!resizingChat) return undefined;
+
+    function resizeChat(event) {
+      const shell = shellRef.current;
+      const sidebar = shell?.querySelector('.sidebar');
+      if (!shell || !sidebar) return;
+      const shellBounds = shell.getBoundingClientRect();
+      const sidebarBounds = sidebar.getBoundingClientRect();
+      const chatStart = sidebarBounds.right + 12;
+      const nextWidth = ((event.clientX - chatStart) / shellBounds.width) * 100;
+      setChatWidth(Math.min(55, Math.max(18, nextWidth)));
+    }
+
+    function finishResize() {
+      setResizingChat(false);
+    }
+
+    document.body.classList.add('is-resizing-chat');
+    window.addEventListener('pointermove', resizeChat);
+    window.addEventListener('pointerup', finishResize, { once: true });
+    window.addEventListener('pointercancel', finishResize, { once: true });
+    return () => {
+      document.body.classList.remove('is-resizing-chat');
+      window.removeEventListener('pointermove', resizeChat);
+      window.removeEventListener('pointerup', finishResize);
+      window.removeEventListener('pointercancel', finishResize);
+    };
+  }, [resizingChat]);
 
   useEffect(() => {
     let active = true;
@@ -355,8 +395,15 @@ function Conversation({ user, onLogout }) {
     setDraft((current) => current ? `${current}\n${text}` : text);
   }
 
+  function resizeChatWithKeyboard(event) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === 'Home') return setChatWidth(20);
+    setChatWidth((current) => Math.min(55, Math.max(18, current + (event.key === 'ArrowRight' ? 1 : -1))));
+  }
+
   return (
-    <main className={`app-shell ${focusMode ? 'app-shell--focus' : ''}`}>
+    <main ref={shellRef} className={`app-shell ${focusMode ? 'app-shell--focus' : ''}`} style={{ '--chat-width': `${chatWidth}%` }}>
       <aside className="sidebar">
         <div className="brand"><Mark /><span>DuoNook</span></div>
         <div className="nook-portrait" aria-label="The two members of this nook">
@@ -434,6 +481,21 @@ function Conversation({ user, onLogout }) {
           <p className="composer-hint">Enter to send · Shift + Enter for a new line</p>
         </div>
       </section>
+      <button
+        className="chat-resizer"
+        type="button"
+        role="separator"
+        aria-label="Resize chat panel"
+        aria-orientation="vertical"
+        aria-valuemin="18"
+        aria-valuemax="55"
+        aria-valuenow={Math.round(chatWidth)}
+        aria-valuetext={`${Math.round(chatWidth)} percent of the workspace`}
+        title="Drag to resize · Arrow keys adjust · Home resets to 20%"
+        onPointerDown={() => setResizingChat(true)}
+        onKeyDown={resizeChatWithKeyboard}
+      ><span aria-hidden="true" /></button>
+      <section className="future-space" aria-label="Future features area" />
     </main>
   );
 }

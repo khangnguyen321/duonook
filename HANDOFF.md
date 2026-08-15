@@ -35,6 +35,8 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - Relationship-first conversation layout with a compact shared-nook rail
 - Three remembered color moods: Garden, Sunset, and Lagoon
 - Distraction-free focus mode
+- Desktop chat defaults to 20% of the workspace and can be resized by drag or keyboard
+- Reserved empty right workspace for future feature modules
 - Daily conversation prompt, one-tap affection note, and today's message count
 - Desktop and responsive mobile layouts
 - Startup reconciliation that keeps only the two configured accounts
@@ -105,6 +107,12 @@ Review the new visual direction with both users. If it is approved, the next pro
 The original admin-style sidebar and wide utility canvas were replaced with a relationship-first nook layout. The new rail centers the two members, a daily shared-message count, and a rotating conversation prompt. Garden, Sunset, and Lagoon moods update the complete interface and persist locally; light/dark preference remains independent. Focus mode collapses the rail for a second desktop layout, while mobile keeps a compact conversation-first composition.
 
 This checkpoint changes client presentation and local UI preferences only. It does not add new private data types, server routes, or later-phase persistence.
+
+## Adjustable chat workspace checkpoint
+
+The desktop sidebar remains unchanged. The conversation now occupies 20% of the application workspace by default, with a 300px usability floor. A divider supports pointer dragging, Left/Right arrow adjustments, and Home to reset to 20%; the selected width persists locally between sessions. The remaining right side is intentionally empty and reserved for future features. Focus mode still expands the conversation, while layouts at 700px and below keep the conversation full width and hide the divider and reserved area.
+
+Browser verification at 1594px measured the default conversation at 19.7% (314px). Keyboard resizing reached 30%, pointer dragging reached 33%, and the 390×844 mobile layout returned to a full-width 390px conversation with no browser console errors.
 
 ## NoiGate deployment correction
 
