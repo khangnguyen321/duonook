@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules
+dist
+data
+test
+coverage
+.playwright-cli
+output
+AGENTS.md
+HANDOFF.md
+*.log
+.DS_Store
