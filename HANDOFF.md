@@ -131,7 +131,7 @@ health check, and SQLite data path at `/app/data`.
 
 Verification after the correction:
 
-- `npm test`: 7/7 passed.
+- `npm test`: 9/9 passed.
 - `npm run build`: passed.
 - `npm audit --omit=dev`: 0 vulnerabilities.
 - Production-mode smoke test: `/api/health` returned `{"status":"ok"}` and `/` returned 200 with production security headers.
@@ -140,6 +140,14 @@ Verification after the correction:
 NoiGate must redeploy the repository as a Docker service, mount persistent storage at
 `/app/data`, enable WebSockets, provide the production environment variables documented
 in `README.md`, and reissue the mismatched TLS certificate for `duonook.launchport.org`.
+
+## Publication workflow
+
+`main` is the working and publication branch. When the user requests a push, commit the
+verified scoped changes and push directly to `origin/main`; do not create a feature branch
+or GitHub pull request. Never force-push. A successful push to `main` automatically
+triggers NoiGate to rebuild the Docker service and update the live page. Verify the health
+endpoint and changed behavior after the automatic deployment when access is available.
 
 ## NoiGate status
 

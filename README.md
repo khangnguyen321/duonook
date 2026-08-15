@@ -59,6 +59,11 @@ The repository includes a production `Dockerfile`. It builds the Vite client and
 the Express, SQLite, and Socket.IO server in one non-root Node.js container. Deploy the
 repository as a **Docker service**, not as a static Vite/Nginx site.
 
+The publication branch is `main`. Verified changes are committed and pushed directly to
+`origin/main`; GitHub pull requests are not part of the normal DuoNook workflow. Each
+successful push to `main` automatically triggers NoiGate to rebuild the service and update
+the live page.
+
 Use these service settings:
 
 - Dockerfile path: `Dockerfile`
