@@ -103,7 +103,7 @@ function presenceText(presence, partner) {
     : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
 }
 
-function MessageBubble({ message, currentUser, seen, onEdit, onDelete, onReact }) {
+function MessageBubble({ message, sender, currentUser, seen, onEdit, onDelete, onReact }) {
   const own = message.senderId === currentUser.id;
   const [showReactions, setShowReactions] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -130,24 +130,27 @@ function MessageBubble({ message, currentUser, seen, onEdit, onDelete, onReact }
 
   return (
     <article className={`message-row ${own ? 'message-row--own' : ''}`}>
-      <div className={`message-bubble ${message.deletedAt ? 'message-bubble--deleted' : ''}`}>
-        {editing ? (
-          <form className="edit-form" onSubmit={saveEdit}>
-            <textarea value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={2000} autoFocus aria-label="Edit message" />
-            <div><button type="button" onClick={() => setEditing(false)}>Cancel</button><button type="submit" disabled={saving || !editBody.trim()}>{saving ? 'Saving…' : 'Save'}</button></div>
-          </form>
-        ) : message.deletedAt ? <p className="deleted-copy">Message deleted</p> : <p>{message.body}</p>}
-        {!editing && !message.deletedAt && (
-          <div className="message-actions">
-            <button type="button" onClick={() => setShowReactions((value) => !value)} aria-label="Add reaction">♡</button>
-            {own && <button type="button" onClick={() => setEditing(true)} aria-label="Edit message">Edit</button>}
-            {own && <button type="button" onClick={() => onDelete(message.id)} aria-label="Delete message">Delete</button>}
-            {showReactions && <div className="reaction-picker" aria-label="Choose a reaction">{reactionChoices.map((emoji) => <button key={emoji} type="button" onClick={() => { onReact(message.id, emoji); setShowReactions(false); }}>{emoji}</button>)}</div>}
-          </div>
-        )}
+      {sender && <Avatar member={sender} size="message" />}
+      <div className="message-content">
+        <div className={`message-bubble ${message.deletedAt ? 'message-bubble--deleted' : ''}`}>
+          {editing ? (
+            <form className="edit-form" onSubmit={saveEdit}>
+              <textarea value={editBody} onChange={(event) => setEditBody(event.target.value)} maxLength={2000} autoFocus aria-label="Edit message" />
+              <div><button type="button" onClick={() => setEditing(false)}>Cancel</button><button type="submit" disabled={saving || !editBody.trim()}>{saving ? 'Saving…' : 'Save'}</button></div>
+            </form>
+          ) : message.deletedAt ? <p className="deleted-copy">Message deleted</p> : <p>{message.body}</p>}
+          {!editing && !message.deletedAt && (
+            <div className="message-actions">
+              <button type="button" onClick={() => setShowReactions((value) => !value)} aria-label="Add reaction">♡</button>
+              {own && <button type="button" onClick={() => setEditing(true)} aria-label="Edit message">Edit</button>}
+              {own && <button type="button" onClick={() => onDelete(message.id)} aria-label="Delete message">Delete</button>}
+              {showReactions && <div className="reaction-picker" aria-label="Choose a reaction">{reactionChoices.map((emoji) => <button key={emoji} type="button" onClick={() => { onReact(message.id, emoji); setShowReactions(false); }}>{emoji}</button>)}</div>}
+            </div>
+          )}
+        </div>
+        {groupedReactions.length > 0 && <div className="reaction-list">{groupedReactions.map((reaction) => <button key={reaction.emoji} type="button" className={reaction.mine ? 'reaction--mine' : ''} title={reaction.names} onClick={() => onReact(message.id, reaction.emoji)}>{reaction.emoji}<span>{reaction.count}</span></button>)}</div>}
+        <div className="message-meta"><span>{messageTime(message.createdAt)}{message.editedAt ? ' · edited' : ''}</span>{own && seen && <span className="seen-label">Seen</span>}</div>
       </div>
-      {groupedReactions.length > 0 && <div className="reaction-list">{groupedReactions.map((reaction) => <button key={reaction.emoji} type="button" className={reaction.mine ? 'reaction--mine' : ''} title={reaction.names} onClick={() => onReact(message.id, reaction.emoji)}>{reaction.emoji}<span>{reaction.count}</span></button>)}</div>}
-      <div className="message-meta"><span>{messageTime(message.createdAt)}{message.editedAt ? ' · edited' : ''}</span>{own && seen && <span className="seen-label">Seen</span>}</div>
     </article>
   );
 }
@@ -460,9 +463,10 @@ function Conversation({ user, onLogout }) {
               {messages.map((message, index) => {
                 const previous = messages[index - 1];
                 const showDate = !previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString();
+                const sender = conversation.members.find((member) => member.id === message.senderId);
                 const lastOwnMessage = [...messages].reverse().find((item) => item.senderId === user.id);
                 const seen = message.senderId === user.id && message.id <= partnerReadId && message.id === lastOwnMessage?.id;
-                return <div key={message.id}>{showDate && <div className="date-divider"><span>{messageDateLabel(message.createdAt)}</span></div>}<MessageBubble message={message} currentUser={user} seen={seen} onEdit={editMessage} onDelete={deleteMessage} onReact={reactToMessage} /></div>;
+                return <div key={message.id}>{showDate && <div className="date-divider"><span>{messageDateLabel(message.createdAt)}</span></div>}<MessageBubble message={message} sender={sender} currentUser={user} seen={seen} onEdit={editMessage} onDelete={deleteMessage} onReact={reactToMessage} /></div>;
               })}
               {partnerTyping && <div className="typing-bubble" aria-label={`${partner?.displayName} is typing`}><i /><i /><i /></div>}
               <div ref={messageEndRef} />

@@ -34,6 +34,8 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - Persistent light and dark themes
 - Relationship-first conversation layout with a compact shared-nook rail
 - Three remembered color moods: Garden, Sunset, and Lagoon
+- Compact sender avatars beside every message, aligned left for received messages and right for sent messages
+- Cream sent-message bubbles with palette-colored received-message bubbles
 - Distraction-free focus mode
 - Desktop chat defaults to 20% of the workspace and can be resized by drag or keyboard
 - Reserved empty right workspace for future feature modules
@@ -48,7 +50,7 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 ## Verification status
 
 - `npm run build` passes.
-- `npm test` passes all **7 tests**.
+- `npm test` passes all **9 tests**.
 - `npm audit --omit=dev` reports **0 vulnerabilities**.
 - `node --check` passes for the server entry point, database module, and authentication module.
 - Two isolated browser sessions verified login, presence, instant delivery, seen state, reactions, live edits, dark mode, and the 390×844 responsive layout.
@@ -113,6 +115,12 @@ This checkpoint changes client presentation and local UI preferences only. It do
 The desktop sidebar remains unchanged. The conversation now occupies 20% of the application workspace by default, with a 300px usability floor. A divider supports pointer dragging, Left/Right arrow adjustments, and Home to reset to 20%; the selected width persists locally between sessions. The remaining right side is intentionally empty and reserved for future features. Focus mode still expands the conversation, while layouts at 700px and below keep the conversation full width and hide the divider and reserved area.
 
 Browser verification at 1594px measured the default conversation at 19.7% (314px). Keyboard resizing reached 30%, pointer dragging reached 33%, and the 390×844 mobile layout returned to a full-width 390px conversation with no browser console errors.
+
+## Message identity checkpoint
+
+Every message now resolves its sender from the two approved conversation members and displays that member's compact avatar beside the bubble. Received messages place the avatar on the left; sent messages mirror the row so the avatar appears on the right with the same 10px spacing. Sent bubbles remain cream (`#fffefb`) in every mood, while received bubbles use the selected Garden, Sunset, or Lagoon color. Deleted-message placeholders remain transparent, and typing/edit controls retain appropriate contrast after the color-role inversion.
+
+Two client-presentation regression tests cover sender-avatar placement and the sent/received palette mapping. The full 9-test suite and production build pass.
 
 ## NoiGate deployment correction
 
