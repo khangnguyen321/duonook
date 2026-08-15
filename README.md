@@ -25,7 +25,6 @@ The complete Phase 1 website is implemented:
 - Emoji reactions
 - Light and dark themes
 - Responsive desktop and mobile conversation layouts
-- Integration coverage for authentication, authorization, messages, controls, read state, and private real-time events
 
 ## Run locally
 
@@ -57,13 +56,12 @@ Production requires `SESSION_SECRET` and both account emails and passwords from 
 ## Verification
 
 ```powershell
-npm test
 npm run build
 npm audit --omit=dev
 ```
 
-The current suite contains seven server integration tests. The two-user conversation flow
-has also been exercised in isolated real-browser sessions at desktop and mobile sizes.
+Before publication, the two-user conversation flow was validated in isolated real-browser
+sessions at desktop and mobile sizes, alongside server integration checks.
 
 ## NoiGate integration
 
