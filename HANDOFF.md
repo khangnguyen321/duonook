@@ -56,6 +56,7 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - Two isolated browser sessions verified login, presence, instant delivery, seen state, reactions, live edits, dark mode, and the 390×844 responsive layout.
 - The visual-polish checkpoint was browser-verified at desktop and 390×844: prompt insertion, all mood controls, focus mode, dark mode, responsive layout, and zero browser console errors.
 - Shared-space dashboard checkpoint: the focused presentation test verifies the rendered dashboard, its existing-conversation activity data, quick-note controls, desktop styling, and mobile hiding. `npm test` passes 11/11 and `npm run build` passes. A new full browser pass was not possible in this workspace because the configured production database path targets `/app` and the Windows Bash service required by the available browser wrapper is denied.
+- Dashboard publication: commit `74e6bab` was pushed to `origin/main` successfully on August 21, 2026. The live `/api/health` endpoint returned `{"status":"ok"}` and `/` returned HTTP 200 with the expected security headers, but its `index-Nk5oK47M.js` / `index-x9db2gs1.css` asset references were still the prior deployment rather than this checkpoint's `index-H2x38Hyx.js` / `index-DJ_xDHr0.css` after a second check. LaunchPort must be manually redeployed or its push-trigger configuration repaired before the dashboard is live.
 - `main` is the working and publication branch; unrelated temporary QA files remain excluded from Git.
 
 ## Known limitations
