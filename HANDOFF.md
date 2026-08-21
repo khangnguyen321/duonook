@@ -1,7 +1,7 @@
 # DuoNook Handoff
 
 **Last updated:** August 20, 2026
-**Current phase:** Complete Phase 1 website with proportional workspace checkpoint implemented and verified
+**Current phase:** Complete Phase 1 website with shared-space dashboard checkpoint implemented and verified
 **Project direction:** Private, desktop-first messaging for exactly two approved people
 
 ## Product promise
@@ -38,7 +38,7 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - Cream sent-message bubbles with palette-colored received-message bubbles
 - Distraction-free focus mode
 - Wide desktop workspace uses an 18.4% sidebar, 35% chat, and 46.6% reserved area
-- Reserved empty right workspace for future feature modules
+- Shared-space dashboard fills the desktop right area with connection status, conversation activity, the latest non-deleted message, and quick note starters
 - Daily conversation prompt, one-tap affection note, and today's message count
 - Desktop and responsive mobile layouts
 - Startup reconciliation that keeps only the two configured accounts
@@ -50,11 +50,12 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 ## Verification status
 
 - `npm run build` passes.
-- `npm test` passes all **10 tests**.
+- `npm test` passes all **11 tests**.
 - `npm audit --omit=dev` reports **0 vulnerabilities**.
 - `node --check` passes for the server entry point, database module, and authentication module.
 - Two isolated browser sessions verified login, presence, instant delivery, seen state, reactions, live edits, dark mode, and the 390×844 responsive layout.
 - The visual-polish checkpoint was browser-verified at desktop and 390×844: prompt insertion, all mood controls, focus mode, dark mode, responsive layout, and zero browser console errors.
+- Shared-space dashboard checkpoint: the focused presentation test verifies the rendered dashboard, its existing-conversation activity data, quick-note controls, desktop styling, and mobile hiding. `npm test` passes 11/11 and `npm run build` passes. A new full browser pass was not possible in this workspace because the configured production database path targets `/app` and the Windows Bash service required by the available browser wrapper is denied.
 - `main` is the working and publication branch; unrelated temporary QA files remain excluded from Git.
 
 ## Known limitations
@@ -102,7 +103,13 @@ The defined acceptance criteria are met: both approved users can sign in separat
 
 ## Recommended next step
 
-Review the new visual direction with both users. If it is approved, the next product checkpoint can begin the first later-phase feature (attachments, replies, search, pinned messages, or couple-specific shortcuts) one at a time. Before public-internet deployment, configure HTTPS/WSS, backups, process supervision, and the final domain. NoiGate can replace the isolated persistence/authentication modules when its contract becomes available.
+Review the shared-space dashboard with both users. If it is approved, the next product checkpoint can begin the first persisted later-phase feature (attachments, replies, search, or pinned messages) one at a time. Before public-internet deployment, configure HTTPS/WSS, backups, process supervision, and the final domain. NoiGate can replace the isolated persistence/authentication modules when its contract becomes available.
+
+## Shared-space dashboard checkpoint
+
+The previously empty desktop right workspace is now a responsive, private dashboard assembled entirely from already-authorized conversation state. It adds no database tables, API routes, or data retention. The panel shows live connection/presence state, message totals for today, the current week, and loaded history, the most recent non-deleted message, and three quick starters that place a love note, planning message, or daily question into the existing composer. It is intentionally hidden at the existing mobile breakpoint, preserving the conversation-first mobile experience.
+
+During verification, a Windows test teardown race was corrected in the local uncommitted integration-test harness by waiting for the spawned server process to exit before removing its temporary SQLite directory. That test file predates this checkpoint and remains untracked, so it is not part of the published dashboard change.
 
 ## Visual-polish checkpoint
 

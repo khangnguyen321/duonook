@@ -30,3 +30,14 @@ test('wide desktop uses the requested 18.4/35/46.6 workspace split without resiz
   assert.match(stylesSource, /@media \(max-width: 1250px\)[^{]*\{[\s\S]*?\.app-shell--focus \{ grid-template-columns: minmax\(0, 1fr\) 412px minmax\(0, 1fr\); \}/);
   assert.doesNotMatch(appSource, /duonook-chat-width|chat-resizer|resizeChatWithKeyboard/);
 });
+
+test('reserved desktop area is a responsive shared-space dashboard driven by conversation data', () => {
+  assert.match(appSource, /const weekMessageCount = messages\.filter/);
+  assert.match(appSource, /<aside className="shared-dashboard" aria-label="Shared space dashboard">/);
+  assert.match(appSource, /<span>This week<\/span>/);
+  assert.match(appSource, /Start something sweet/);
+  assert.match(appSource, /onClick=\{\(\) => usePrompt\('Want to plan something together\?'\)\}/);
+  assert.match(stylesSource, /\.shared-dashboard \{[^}]*overflow-y: auto;/s);
+  assert.match(stylesSource, /\.dashboard-stats \{[^}]*grid-template-columns: repeat\(3, 1fr\);/s);
+  assert.match(stylesSource, /\.shared-dashboard \{ display: none; \}/);
+});

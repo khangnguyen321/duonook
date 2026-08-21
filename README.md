@@ -24,7 +24,8 @@ The complete Phase 1 website is implemented:
 - Sender-only message editing and deletion
 - Emoji reactions
 - Light and dark themes
-- Proportional desktop workspace with an 18.4% sidebar, 35% chat, and 46.6% reserved area
+- Proportional desktop workspace with an 18.4% sidebar, 35% chat, and a 46.6% shared-space dashboard
+- Desktop shared-space dashboard with presence, activity, recent-message, and quick-note controls
 - Responsive desktop and mobile conversation layouts
 
 ## Run locally

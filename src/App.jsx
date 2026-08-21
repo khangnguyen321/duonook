@@ -351,7 +351,14 @@ function Conversation({ user, onLogout }) {
   }
 
   const partnerReadId = partner ? readStates[partner.id] ?? 0 : 0;
-  const todayMessageCount = messages.filter((message) => new Date(message.createdAt).toDateString() === new Date().toDateString()).length;
+  const today = new Date();
+  const todayMessageCount = messages.filter((message) => new Date(message.createdAt).toDateString() === today.toDateString()).length;
+  const weekStart = new Date(today);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const weekMessageCount = messages.filter((message) => new Date(message.createdAt) >= weekStart).length;
+  const latestMessage = [...messages].reverse().find((message) => !message.deletedAt);
+  const latestSender = latestMessage ? conversation?.members.find((member) => member.id === latestMessage.senderId) : null;
   const prompt = conversationPrompts[new Date().getDate() % conversationPrompts.length];
 
   function usePrompt(text) {
@@ -438,7 +445,41 @@ function Conversation({ user, onLogout }) {
           <p className="composer-hint">Enter to send · Shift + Enter for a new line</p>
         </div>
       </section>
-      <section className="future-space" aria-label="Future features area" />
+      <aside className="shared-dashboard" aria-label="Shared space dashboard">
+        <header className="dashboard-header">
+          <p className="eyebrow">Shared space</p>
+          <h2>A little look at us.</h2>
+          <p>Small signals from the conversation you share.</p>
+        </header>
+
+        <section className="dashboard-card dashboard-presence">
+          <div className="dashboard-card-heading"><span className={`presence-pulse ${partnerPresence?.online ? 'presence-pulse--online' : ''}`} aria-hidden="true" /><span>Connection</span></div>
+          <div className="dashboard-people">
+            {conversation?.members.map((member) => <Avatar key={member.id} member={member} size="small" online={presence[member.id]?.online} />)}
+            <div><strong>{partnerPresence?.online ? 'Both here now' : 'Your nook is waiting'}</strong><p>{partnerPresence?.online ? `${partner?.displayName} is online with you.` : presenceText(partnerPresence, partner)}</p></div>
+          </div>
+        </section>
+
+        <section className="dashboard-stats" aria-label="Conversation activity">
+          <div><strong>{todayMessageCount}</strong><span>Today</span></div>
+          <div><strong>{weekMessageCount}</strong><span>This week</span></div>
+          <div><strong>{messages.length}</strong><span>All time</span></div>
+        </section>
+
+        <section className="dashboard-card dashboard-moment">
+          <div className="dashboard-card-heading"><span aria-hidden="true">✦</span><span>Last little moment</span></div>
+          {latestMessage ? <><p>“{latestMessage.body}”</p><small>{latestSender?.displayName ?? 'One of you'} · {messageTime(latestMessage.createdAt)}</small></> : <p className="dashboard-empty">Your first shared note will live here.</p>}
+        </section>
+
+        <section className="dashboard-card dashboard-start">
+          <div className="dashboard-card-heading"><span aria-hidden="true">♡</span><span>Start something sweet</span></div>
+          <div className="dashboard-actions">
+            <button type="button" onClick={() => usePrompt('Thinking of you ❤️')}>Love note</button>
+            <button type="button" onClick={() => usePrompt('Want to plan something together?')}>Make a plan</button>
+            <button type="button" onClick={() => usePrompt(prompt)}>Daily question</button>
+          </div>
+        </section>
+      </aside>
     </main>
   );
 }
