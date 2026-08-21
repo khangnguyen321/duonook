@@ -26,6 +26,7 @@ const io = new Server(server, {
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const allowedReactions = new Set(['❤️', '👍', '😂', '😮', '😢', '🎉']);
 const onlineSockets = new Map();
+const weatherCache = new Map();
 
 function parseCookies(header = '') {
   return Object.fromEntries(
@@ -97,6 +98,20 @@ function normalizeMessageBody(value) {
   return String(value ?? '').replace(/\r\n/g, '\n').trim();
 }
 
+function normalizeLocationLabel(value) {
+  return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim();
+}
+
+function publicLocation(row) {
+  return {
+    userId: row.userId,
+    displayName: row.displayName,
+    avatarColor: row.avatarColor,
+    label: row.label,
+    updatedAt: toIsoTimestamp(row.updatedAt),
+  };
+}
+
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: config.isProduction ? undefined : false }));
 app.use(express.json({ limit: '32kb' }));
@@ -162,6 +177,144 @@ app.get('/api/conversation', authenticate, async (request, response) => {
     [conversation.id],
   );
   return response.json({ conversation: { ...conversation, members } });
+});
+
+app.get('/api/shared-locations', authenticate, async (request, response) => {
+  const conversation = await conversationForUser(request.user.id);
+  if (!conversation) {
+    return response.status(403).json({ error: 'You do not have access to a conversation.' });
+  }
+  const locations = await db.all(
+    `SELECT sl.user_id AS userId, u.display_name AS displayName,
+            u.avatar_color AS avatarColor, sl.label, sl.updated_at AS updatedAt
+     FROM shared_locations sl
+     JOIN users u ON u.id = sl.user_id
+     JOIN conversation_members cm ON cm.user_id = sl.user_id
+     WHERE cm.conversation_id = ?
+     ORDER BY sl.user_id`,
+    [conversation.id],
+  );
+  return response.json({ locations: locations.map(publicLocation) });
+});
+
+app.put('/api/shared-locations/me', authenticate, async (request, response) => {
+  const conversation = await conversationForUser(request.user.id);
+  if (!conversation) {
+    return response.status(403).json({ error: 'You do not have access to a conversation.' });
+  }
+  const label = normalizeLocationLabel(request.body.label);
+  const latitude = Number(request.body.latitude);
+  const longitude = Number(request.body.longitude);
+  if (!label || label.length > 40) {
+    return response.status(400).json({ error: 'Give the shared area a label up to 40 characters.' });
+  }
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90
+    || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return response.status(400).json({ error: 'Location coordinates are invalid.' });
+  }
+
+  // About city-neighborhood precision: useful for weather and reassurance without exact tracking.
+  const approximateLatitude = Math.round(latitude * 100) / 100;
+  const approximateLongitude = Math.round(longitude * 100) / 100;
+  const updatedAt = new Date().toISOString();
+  await db.run(
+    `INSERT INTO shared_locations (user_id, label, latitude, longitude, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       label = excluded.label,
+       latitude = excluded.latitude,
+       longitude = excluded.longitude,
+       updated_at = excluded.updated_at`,
+    [request.user.id, label, approximateLatitude, approximateLongitude, updatedAt],
+  );
+  weatherCache.delete(request.user.id);
+  const location = {
+    userId: request.user.id,
+    displayName: request.user.displayName,
+    avatarColor: request.user.avatarColor,
+    label,
+    updatedAt,
+  };
+  io.to(roomName(conversation.id)).emit('location:update', { shared: true, location });
+  return response.json({ location });
+});
+
+app.delete('/api/shared-locations/me', authenticate, async (request, response) => {
+  const conversation = await conversationForUser(request.user.id);
+  if (!conversation) {
+    return response.status(403).json({ error: 'You do not have access to a conversation.' });
+  }
+  await db.run('DELETE FROM shared_locations WHERE user_id = ?', [request.user.id]);
+  weatherCache.delete(request.user.id);
+  io.to(roomName(conversation.id)).emit('location:update', {
+    shared: false,
+    userId: request.user.id,
+  });
+  return response.status(204).end();
+});
+
+app.get('/api/weather/:userId', authenticate, async (request, response) => {
+  const conversation = await conversationForUser(request.user.id);
+  if (!conversation) {
+    return response.status(403).json({ error: 'You do not have access to a conversation.' });
+  }
+  const userId = Number(request.params.userId);
+  const location = Number.isInteger(userId) ? await db.get(
+    `SELECT sl.latitude, sl.longitude, sl.updated_at AS updatedAt
+     FROM shared_locations sl
+     JOIN conversation_members cm ON cm.user_id = sl.user_id
+     WHERE sl.user_id = ? AND cm.conversation_id = ?`,
+    [userId, conversation.id],
+  ) : null;
+  if (!location) return response.status(404).json({ error: 'That person is not sharing an area.' });
+
+  const cached = weatherCache.get(userId);
+  if (cached && cached.locationUpdatedAt === location.updatedAt
+    && Date.now() - cached.cachedAt < 10 * 60 * 1000) {
+    return response.json({ weather: cached.weather });
+  }
+
+  try {
+    const query = new URLSearchParams({
+      latitude: String(location.latitude),
+      longitude: String(location.longitude),
+      current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m',
+      temperature_unit: 'fahrenheit',
+      wind_speed_unit: 'mph',
+      timezone: 'auto',
+    });
+    const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?${query}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!weatherResponse.ok) throw new Error(`Weather provider returned ${weatherResponse.status}.`);
+    const result = await weatherResponse.json();
+    const weatherValues = result.current && [
+      result.current.temperature_2m,
+      result.current.apparent_temperature,
+      result.current.weather_code,
+      result.current.wind_speed_10m,
+    ];
+    if (!weatherValues || !weatherValues.every(Number.isFinite)) {
+      throw new Error('Weather provider returned an incomplete response.');
+    }
+    const weather = {
+      temperature: Math.round(result.current.temperature_2m),
+      feelsLike: Math.round(result.current.apparent_temperature),
+      weatherCode: result.current.weather_code,
+      windSpeed: Math.round(result.current.wind_speed_10m),
+      timezone: result.timezone,
+      observedAt: result.current.time,
+    };
+    weatherCache.set(userId, {
+      weather,
+      locationUpdatedAt: location.updatedAt,
+      cachedAt: Date.now(),
+    });
+    return response.json({ weather });
+  } catch (error) {
+    console.warn('Weather lookup failed:', error.message);
+    return response.status(502).json({ error: 'Weather is taking a little break. Try again soon.' });
+  }
 });
 
 app.get('/api/messages', authenticate, async (request, response) => {

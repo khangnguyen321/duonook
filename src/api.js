@@ -40,4 +40,11 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ messageId }),
   }),
+  sharedLocations: () => request('/api/shared-locations'),
+  shareLocation: (label, latitude, longitude) => request('/api/shared-locations/me', {
+    method: 'PUT',
+    body: JSON.stringify({ label, latitude, longitude }),
+  }),
+  stopSharingLocation: () => request('/api/shared-locations/me', { method: 'DELETE' }),
+  weather: (userId) => request(`/api/weather/${userId}`),
 };

@@ -25,7 +25,8 @@ The complete Phase 1 website is implemented:
 - Emoji reactions
 - Light and dark themes
 - Proportional desktop workspace with an 18.4% sidebar, 35% chat, and a 46.6% shared-space dashboard
-- Desktop shared-space dashboard with presence, activity, recent-message, and quick-note controls
+- Shared-glance dashboard with weather, opt-in approximate whereabouts, presence, activity, recent-message, date, and quick-note controls
+- Manual location snapshots with neighborhood-level coordinate rounding, live partner updates, and one-click revocation
 - Responsive desktop and mobile conversation layouts
 
 ## Run locally
@@ -75,6 +76,7 @@ Use these service settings:
 - Health check: `/api/health`
 - Persistent volume mount: `/app/data`
 - WebSocket support: enabled for `/socket.io`
+- Outbound HTTPS access: enabled for `api.open-meteo.com` weather requests
 
 Set these environment variables in the deployment platform:
 

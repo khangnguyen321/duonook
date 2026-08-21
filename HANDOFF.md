@@ -1,7 +1,7 @@
 # DuoNook Handoff
 
-**Last updated:** August 20, 2026
-**Current phase:** Complete Phase 1 website with shared-space dashboard checkpoint implemented and verified
+**Last updated:** August 21, 2026
+**Current phase:** Complete Phase 1 website with shared-glance weather and opt-in location checkpoint implemented and verified
 **Project direction:** Private, desktop-first messaging for exactly two approved people
 
 ## Product promise
@@ -38,7 +38,9 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - Cream sent-message bubbles with palette-colored received-message bubbles
 - Distraction-free focus mode
 - Wide desktop workspace uses an 18.4% sidebar, 35% chat, and 46.6% reserved area
-- Shared-space dashboard fills the desktop right area with connection status, conversation activity, the latest non-deleted message, and quick note starters
+- Shared-glance dashboard fills the wide desktop right area with weather, a date tile, consent-based approximate whereabouts, connection status, conversation activity, the latest non-deleted message, and quick note starters
+- Manual neighborhood-level location snapshots with server-side coordinate rounding, live partner updates, no movement history, and one-click revocation
+- Authenticated Open-Meteo weather proxy with a 10-minute server cache and client refresh interval
 - Daily conversation prompt, one-tap affection note, and today's message count
 - Desktop and responsive mobile layouts
 - Startup reconciliation that keeps only the two configured accounts
@@ -57,6 +59,7 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - The visual-polish checkpoint was browser-verified at desktop and 390×844: prompt insertion, all mood controls, focus mode, dark mode, responsive layout, and zero browser console errors.
 - Shared-space dashboard checkpoint: the focused presentation test verifies the rendered dashboard, its existing-conversation activity data, quick-note controls, desktop styling, and mobile hiding. `npm test` passes 11/11 and `npm run build` passes. A new full browser pass was not possible in this workspace because the configured production database path targets `/app` and the Windows Bash service required by the available browser wrapper is denied.
 - Dashboard publication: commit `74e6bab` was pushed to `origin/main` successfully on August 21, 2026. The live `/api/health` endpoint returned `{"status":"ok"}` and `/` returned HTTP 200 with the expected security headers, but its `index-Nk5oK47M.js` / `index-x9db2gs1.css` asset references were still the prior deployment rather than this checkpoint's `index-H2x38Hyx.js` / `index-DJ_xDHr0.css` after a second check. LaunchPort must be manually redeployed or its push-trigger configuration repaired before the dashboard is live.
+- Shared-glance checkpoint: `npm test` passes 14/14, including focused authorization, validation, coordinate-rounding, response-redaction, partner-read, and revocation coverage; `npm run build`, `npm audit --omit=dev`, and server syntax checks pass. Browser QA at 1594×900 verified the complete card grid and the one-time location consent flow; switching to the second approved account verified the live partner label. The 900×900 layout hides the auxiliary dashboard to avoid a cramped rail, and 390×844 retains the conversation-first mobile view. The sandboxed local server could not reach Open-Meteo, so browser QA exercised the graceful unavailable state; the request fields were checked against the official Open-Meteo forecast API documentation.
 - `main` is the working and publication branch; unrelated temporary QA files remain excluded from Git.
 
 ## Known limitations
@@ -104,7 +107,15 @@ The defined acceptance criteria are met: both approved users can sign in separat
 
 ## Recommended next step
 
-Review the shared-space dashboard with both users. If it is approved, the next product checkpoint can begin the first persisted later-phase feature (attachments, replies, search, or pinned messages) one at a time. Before public-internet deployment, configure HTTPS/WSS, backups, process supervision, and the final domain. NoiGate can replace the isolated persistence/authentication modules when its contract becomes available.
+Review the shared-glance dashboard and location-sharing language with both users. The next checkpoint can then begin one persisted later-phase feature (attachments, replies, search, or pinned messages) at a time. Before public-internet deployment, confirm outbound HTTPS access to `api.open-meteo.com`, configure HTTPS/WSS, backups, process supervision, and the final domain. NoiGate can replace the isolated persistence/authentication modules when its contract becomes available.
+
+## Shared-glance weather and location checkpoint
+
+The wide desktop dashboard is now a compact responsive grid instead of a vertical stack. It adds current weather for each shared area, a date tile, a partner whereabouts card, and keeps connection, conversation activity, latest-moment, and quick-note cards. The auxiliary dashboard remains visible on wide desktops, switches to a single-column card layout as its container narrows, hides at 1000px and below to protect the chat workspace, and remains hidden on mobile.
+
+Location sharing is explicitly opt-in and manual. The browser requests a one-time geolocation only after the signed-in user submits an area label; the server validates the label and coordinates, rounds coordinates to two decimal places before persistence, never exposes coordinates in API or socket responses, and stores only the current snapshot. Either person can update or revoke only their own shared area. Both location reads and weather lookups require authenticated membership in the single private conversation.
+
+The server requests current temperature, apparent temperature, WMO weather code, and 10-meter wind speed from Open-Meteo using the rounded coordinates. Responses are validated and cached for 10 minutes; the client refreshes on the same interval and renders a non-blocking unavailable state if the provider cannot be reached.
 
 ## Shared-space dashboard checkpoint
 

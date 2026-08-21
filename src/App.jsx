@@ -103,6 +103,27 @@ function presenceText(presence, partner) {
     : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
 }
 
+function weatherDetails(code) {
+  if (code === 0) return { icon: '☀', label: 'Clear' };
+  if ([1, 2].includes(code)) return { icon: '🌤', label: 'Partly cloudy' };
+  if (code === 3) return { icon: '☁', label: 'Cloudy' };
+  if ([45, 48].includes(code)) return { icon: '≋', label: 'Foggy' };
+  if ([51, 53, 55, 56, 57].includes(code)) return { icon: '🌦', label: 'Drizzle' };
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { icon: '🌧', label: 'Rainy' };
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return { icon: '❄', label: 'Snowy' };
+  if ([95, 96, 99].includes(code)) return { icon: 'ϟ', label: 'Stormy' };
+  return { icon: '◌', label: 'Current weather' };
+}
+
+function sharedTime(timestamp) {
+  if (!timestamp) return '';
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000));
+  if (elapsedMinutes < 1) return 'just now';
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+  if (elapsedMinutes < 24 * 60) return `${Math.floor(elapsedMinutes / 60)}h ago`;
+  return new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
 function MessageBubble({ message, sender, currentUser, seen, onEdit, onDelete, onReact }) {
   const own = message.senderId === currentUser.id;
   const [showReactions, setShowReactions] = useState(false);
@@ -170,6 +191,11 @@ function Conversation({ user, onLogout }) {
   const [palette, setPalette] = useState(() => localStorage.getItem('duonook-palette') ?? 'garden');
   const [focusMode, setFocusMode] = useState(false);
   const [showPaletteMenu, setShowPaletteMenu] = useState(false);
+  const [locations, setLocations] = useState([]);
+  const [weatherByUser, setWeatherByUser] = useState({});
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [locationLabel, setLocationLabel] = useState('Home');
+  const [locationBusy, setLocationBusy] = useState(false);
   const socketRef = useRef(null);
   const typingTimerRef = useRef(null);
   const partnerTypingTimerRef = useRef(null);
@@ -199,12 +225,13 @@ function Conversation({ user, onLogout }) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.conversation(), api.messages()])
-      .then(([conversationResult, messageResult]) => {
+    Promise.all([api.conversation(), api.messages(), api.sharedLocations()])
+      .then(([conversationResult, messageResult, locationResult]) => {
         if (!active) return;
         const loadedConversation = conversationResult.conversation;
         setConversation(loadedConversation);
         setMessages(messageResult.messages);
+        setLocations(locationResult.locations);
         setReadStates(Object.fromEntries(loadedConversation.members.map((member) => [member.id, member.lastReadMessageId])));
         const lastRead = loadedConversation.lastReadMessageId ?? 0;
         setUnread(messageResult.messages.filter((message) => message.senderId !== user.id && message.id > lastRead).length);
@@ -234,6 +261,11 @@ function Conversation({ user, onLogout }) {
       if (update.typing) partnerTypingTimerRef.current = setTimeout(() => setPartnerTyping(false), 2500);
     });
     socket.on('conversation:read', ({ userId, messageId }) => setReadStates((current) => ({ ...current, [userId]: messageId })));
+    socket.on('location:update', (update) => {
+      setLocations((current) => update.shared
+        ? [...current.filter((location) => location.userId !== update.location.userId), update.location].sort((left, right) => left.userId - right.userId)
+        : current.filter((location) => location.userId !== update.userId));
+    });
     socket.on('connect_error', (socketError) => setError(socketError.message));
     return () => {
       clearTimeout(typingTimerRef.current);
@@ -241,6 +273,39 @@ function Conversation({ user, onLogout }) {
       socket.disconnect();
     };
   }, [mergeMessage, user.id]);
+
+  const locationFingerprint = locations.map((location) => `${location.userId}:${location.updatedAt}`).join('|');
+
+  useEffect(() => {
+    let active = true;
+    if (!locations.length) {
+      setWeatherByUser({});
+      setWeatherLoading(false);
+      return () => { active = false; };
+    }
+    async function loadWeather() {
+      setWeatherLoading(true);
+      const entries = await Promise.all(locations.map(async (location) => {
+        try {
+          const result = await api.weather(location.userId);
+          return [location.userId, result.weather];
+        } catch {
+          return [location.userId, null];
+        }
+      }));
+      if (active) {
+        setWeatherByUser(Object.fromEntries(entries));
+        setWeatherLoading(false);
+      }
+    }
+    loadWeather();
+    const refreshTimer = setInterval(loadWeather, 10 * 60 * 1000);
+    return () => {
+      active = false;
+      clearInterval(refreshTimer);
+    };
+  // The fingerprint reloads weather only when a person shares, updates, or stops sharing.
+  }, [locationFingerprint]);
 
   const markLatestRead = useCallback(async () => {
     if (document.hidden) return;
@@ -345,6 +410,48 @@ function Conversation({ user, onLogout }) {
     if (permission !== 'granted') setError('Notifications remain disabled. You can change this in your browser settings.');
   }
 
+  async function shareMyLocation(event) {
+    event.preventDefault();
+    if (!locationLabel.trim() || locationBusy) return;
+    if (!navigator.geolocation) {
+      setError('Location sharing is not supported in this browser.');
+      return;
+    }
+    setLocationBusy(true);
+    setError('');
+    try {
+      const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+        resolve,
+        reject,
+        { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10000 },
+      ));
+      const result = await api.shareLocation(
+        locationLabel.trim(),
+        position.coords.latitude,
+        position.coords.longitude,
+      );
+      setLocations((current) => [...current.filter((location) => location.userId !== user.id), result.location].sort((left, right) => left.userId - right.userId));
+    } catch (locationError) {
+      const denied = locationError?.code === 1;
+      setError(denied ? 'Location permission was not granted. Nothing was shared.' : (locationError.message ?? 'Your area could not be shared.'));
+    } finally {
+      setLocationBusy(false);
+    }
+  }
+
+  async function stopSharingLocation() {
+    setLocationBusy(true);
+    setError('');
+    try {
+      await api.stopSharingLocation();
+      setLocations((current) => current.filter((location) => location.userId !== user.id));
+    } catch (locationError) {
+      setError(locationError.message);
+    } finally {
+      setLocationBusy(false);
+    }
+  }
+
   async function logout() {
     socketRef.current?.disconnect();
     await onLogout();
@@ -360,6 +467,8 @@ function Conversation({ user, onLogout }) {
   const latestMessage = [...messages].reverse().find((message) => !message.deletedAt);
   const latestSender = latestMessage ? conversation?.members.find((member) => member.id === latestMessage.senderId) : null;
   const prompt = conversationPrompts[new Date().getDate() % conversationPrompts.length];
+  const ownLocation = locations.find((location) => location.userId === user.id);
+  const partnerLocation = partner ? locations.find((location) => location.userId === partner.id) : null;
 
   function usePrompt(text) {
     setDraft((current) => current ? `${current}\n${text}` : text);
@@ -448,37 +557,71 @@ function Conversation({ user, onLogout }) {
       <aside className="shared-dashboard" aria-label="Shared space dashboard">
         <header className="dashboard-header">
           <p className="eyebrow">Shared space</p>
-          <h2>A little look at us.</h2>
-          <p>Small signals from the conversation you share.</p>
+          <h2>Your day, at a glance.</h2>
+          <p>Weather, whereabouts, and little signals from your private nook.</p>
         </header>
 
-        <section className="dashboard-card dashboard-presence">
-          <div className="dashboard-card-heading"><span className={`presence-pulse ${partnerPresence?.online ? 'presence-pulse--online' : ''}`} aria-hidden="true" /><span>Connection</span></div>
-          <div className="dashboard-people">
-            {conversation?.members.map((member) => <Avatar key={member.id} member={member} size="small" online={presence[member.id]?.online} />)}
-            <div><strong>{partnerPresence?.online ? 'Both here now' : 'Your nook is waiting'}</strong><p>{partnerPresence?.online ? `${partner?.displayName} is online with you.` : presenceText(partnerPresence, partner)}</p></div>
-          </div>
-        </section>
+        <div className="dashboard-grid">
+          <section className="dashboard-card dashboard-weather">
+            <div className="dashboard-card-heading"><span aria-hidden="true">☼</span><span>Weather where you are</span></div>
+            {locations.length ? <div className="weather-list">{locations.map((location) => {
+              const currentWeather = weatherByUser[location.userId];
+              const details = currentWeather ? weatherDetails(currentWeather.weatherCode) : null;
+              return <article className="weather-person" key={location.userId}>
+                <div className="weather-icon" aria-hidden="true">{details?.icon ?? (weatherLoading ? '…' : '◌')}</div>
+                <div><span>{location.displayName} · {location.label}</span><strong>{currentWeather ? `${currentWeather.temperature}°` : 'Weather unavailable'}</strong><small>{currentWeather ? `${details.label} · Feels ${currentWeather.feelsLike}° · Wind ${currentWeather.windSpeed} mph` : 'Try again in a little while'}</small></div>
+              </article>;
+            })}</div> : <div className="dashboard-empty-state"><strong>No weather spot yet</strong><p>Share your approximate area below to see local conditions.</p></div>}
+            <small className="weather-credit">Weather by Open-Meteo · refreshed automatically</small>
+          </section>
 
-        <section className="dashboard-stats" aria-label="Conversation activity">
-          <div><strong>{todayMessageCount}</strong><span>Today</span></div>
-          <div><strong>{weekMessageCount}</strong><span>This week</span></div>
-          <div><strong>{messages.length}</strong><span>All time</span></div>
-        </section>
+          <section className="dashboard-card dashboard-date" aria-label="Today">
+            <span>{today.toLocaleDateString([], { weekday: 'long' })}</span>
+            <strong>{today.getDate()}</strong>
+            <small>{today.toLocaleDateString([], { month: 'long', year: 'numeric' })}</small>
+          </section>
 
-        <section className="dashboard-card dashboard-moment">
-          <div className="dashboard-card-heading"><span aria-hidden="true">✦</span><span>Last little moment</span></div>
-          {latestMessage ? <><p>“{latestMessage.body}”</p><small>{latestSender?.displayName ?? 'One of you'} · {messageTime(latestMessage.createdAt)}</small></> : <p className="dashboard-empty">Your first shared note will live here.</p>}
-        </section>
+          <section className="dashboard-card dashboard-location">
+            <div className="dashboard-card-heading"><span aria-hidden="true">⌖</span><span>Whereabouts</span></div>
+            <div className="partner-location">
+              {partnerLocation ? <><Avatar member={partner} size="small" online={partnerPresence?.online} /><div><strong>{partner.displayName} is near {partnerLocation.label}</strong><small>Shared {sharedTime(partnerLocation.updatedAt)} · approximate area</small></div></> : <><div className="location-placeholder" aria-hidden="true">⌁</div><div><strong>{partner?.displayName ?? 'Your person'} hasn’t shared an area</strong><small>They stay private until they choose to share.</small></div></>}
+            </div>
+            <form className="location-controls" onSubmit={shareMyLocation}>
+              <label htmlFor="location-label">My area label</label>
+              <div><input id="location-label" value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} maxLength={40} placeholder="Home, work, downtown…" /><button type="submit" disabled={locationBusy || !locationLabel.trim()}>{locationBusy ? 'Sharing…' : ownLocation ? 'Update' : 'Share my area'}</button></div>
+            </form>
+            {ownLocation && <button className="stop-location" type="button" onClick={stopSharingLocation} disabled={locationBusy}>Stop sharing</button>}
+            <p className="location-privacy">One-time, neighborhood-level update. No background tracking or location history.</p>
+          </section>
 
-        <section className="dashboard-card dashboard-start">
-          <div className="dashboard-card-heading"><span aria-hidden="true">♡</span><span>Start something sweet</span></div>
-          <div className="dashboard-actions">
-            <button type="button" onClick={() => usePrompt('Thinking of you ❤️')}>Love note</button>
-            <button type="button" onClick={() => usePrompt('Want to plan something together?')}>Make a plan</button>
-            <button type="button" onClick={() => usePrompt(prompt)}>Daily question</button>
-          </div>
-        </section>
+          <section className="dashboard-card dashboard-presence">
+            <div className="dashboard-card-heading"><span className={`presence-pulse ${partnerPresence?.online ? 'presence-pulse--online' : ''}`} aria-hidden="true" /><span>Connection</span></div>
+            <div className="dashboard-people">
+              {conversation?.members.map((member) => <Avatar key={member.id} member={member} size="small" online={presence[member.id]?.online} />)}
+              <div><strong>{partnerPresence?.online ? 'Both here now' : 'Your nook is waiting'}</strong><p>{partnerPresence?.online ? `${partner?.displayName} is online with you.` : presenceText(partnerPresence, partner)}</p></div>
+            </div>
+          </section>
+
+          <section className="dashboard-stats" aria-label="Conversation activity">
+            <div><strong>{todayMessageCount}</strong><span>Today</span></div>
+            <div><strong>{weekMessageCount}</strong><span>This week</span></div>
+            <div><strong>{messages.length}</strong><span>Loaded</span></div>
+          </section>
+
+          <section className="dashboard-card dashboard-moment">
+            <div className="dashboard-card-heading"><span aria-hidden="true">✦</span><span>Last little moment</span></div>
+            {latestMessage ? <><p>“{latestMessage.body}”</p><small>{latestSender?.displayName ?? 'One of you'} · {messageTime(latestMessage.createdAt)}</small></> : <p className="dashboard-empty">Your first shared note will live here.</p>}
+          </section>
+
+          <section className="dashboard-card dashboard-start">
+            <div className="dashboard-card-heading"><span aria-hidden="true">♡</span><span>Start something sweet</span></div>
+            <div className="dashboard-actions">
+              <button type="button" onClick={() => usePrompt('Thinking of you ❤️')}>Love note</button>
+              <button type="button" onClick={() => usePrompt('Want to plan something together?')}>Make a plan</button>
+              <button type="button" onClick={() => usePrompt(prompt)}>Daily question</button>
+            </div>
+          </section>
+        </div>
       </aside>
     </main>
   );

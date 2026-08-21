@@ -41,3 +41,16 @@ test('reserved desktop area is a responsive shared-space dashboard driven by con
   assert.match(stylesSource, /\.dashboard-stats \{[^}]*grid-template-columns: repeat\(3, 1fr\);/s);
   assert.match(stylesSource, /\.shared-dashboard \{ display: none; \}/);
 });
+
+test('shared glance adds weather and explicitly consented approximate location controls', () => {
+  assert.match(appSource, /api\.sharedLocations\(\)/);
+  assert.match(appSource, /navigator\.geolocation\.getCurrentPosition/);
+  assert.match(appSource, /Share my area/);
+  assert.match(appSource, /Stop sharing/);
+  assert.match(appSource, /No background tracking or location history\./);
+  assert.match(appSource, /Weather by Open-Meteo/);
+  assert.match(stylesSource, /\.dashboard-grid \{[^}]*grid-template-columns:/s);
+  assert.match(stylesSource, /\.dashboard-weather \{[^}]*grid-column: 1;/s);
+  assert.match(stylesSource, /@container \(max-width: 420px\)/);
+  assert.match(stylesSource, /@media \(min-width: 701px\) and \(max-width: 1000px\)[^{]*\{[\s\S]*?\.shared-dashboard \{ display: none; \}/);
+});

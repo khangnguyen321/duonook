@@ -97,6 +97,16 @@ export async function initializeDatabase() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
+  await run(`
+    CREATE TABLE IF NOT EXISTS shared_locations (
+      user_id INTEGER PRIMARY KEY,
+      label TEXT NOT NULL,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
 
   await seedPrivateNook();
 }
