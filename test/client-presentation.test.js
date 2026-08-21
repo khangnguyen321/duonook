@@ -22,3 +22,11 @@ test('sent bubbles stay cream while received bubbles follow the selected palette
   assert.match(stylesSource, /\.message-bubble \{[^}]*background: var\(--partner-bubble\);/s);
   assert.match(stylesSource, /\.message-row--own \.message-bubble \{[^}]*background: var\(--own-bubble\);/s);
 });
+
+test('desktop chat uses the Galaxy S26 Ultra viewport width without resize controls', () => {
+  assert.match(stylesSource, /\.app-shell \{[^}]*grid-template-columns: 284px 412px minmax\(0, 1fr\);/s);
+  assert.match(stylesSource, /\.app-shell--focus \{ grid-template-columns: minmax\(0, 1fr\) 412px minmax\(0, 1fr\); \}/);
+  assert.match(stylesSource, /@media \(max-width: 920px\)[^{]*\{[\s\S]*?\.app-shell \{ grid-template-columns: 236px 412px minmax\(0, 1fr\); \}/);
+  assert.match(stylesSource, /@media \(max-width: 920px\)[^{]*\{[\s\S]*?\.app-shell--focus \{ grid-template-columns: minmax\(0, 1fr\) 412px minmax\(0, 1fr\); \}/);
+  assert.doesNotMatch(appSource, /duonook-chat-width|chat-resizer|resizeChatWithKeyboard/);
+});

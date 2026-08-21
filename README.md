@@ -24,6 +24,7 @@ The complete Phase 1 website is implemented:
 - Sender-only message editing and deletion
 - Emoji reactions
 - Light and dark themes
+- Fixed 412px desktop chat panel matching the Galaxy S26 Ultra CSS viewport width
 - Responsive desktop and mobile conversation layouts
 
 ## Run locally
