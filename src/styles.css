@@ -65,7 +65,7 @@ button { cursor: pointer; }
 .form-footer { margin-top: 23px; color: var(--muted); font-size: 12px; text-align: center; }
 
 /* Conversation shell */
-.app-shell { height: 100dvh; display: grid; grid-template-columns: 284px 412px minmax(0, 1fr); overflow: hidden; padding: 12px; gap: 12px; background: radial-gradient(circle at 0 0, color-mix(in srgb, var(--accent) 24%, transparent), transparent 32%), radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--sun) 20%, transparent), transparent 35%), var(--paper-soft); }
+.app-shell { height: 100dvh; display: grid; grid-template-columns: 18.4fr 35fr 46.6fr; overflow: hidden; padding: 12px; gap: 12px; background: radial-gradient(circle at 0 0, color-mix(in srgb, var(--accent) 24%, transparent), transparent 32%), radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--sun) 20%, transparent), transparent 35%), var(--paper-soft); }
 .sidebar { position: relative; display: flex; min-height: 0; flex-direction: column; overflow-x: hidden; overflow-y: auto; padding: 26px 20px 18px; border-radius: 25px; color: var(--rail-ink); background: radial-gradient(circle at 100% 0, color-mix(in srgb, var(--accent) 32%, transparent), transparent 31%), var(--primary-deep); box-shadow: 0 18px 50px color-mix(in srgb, var(--primary-deep) 24%, transparent); scrollbar-width: none; transition: margin .3s, opacity .3s, transform .3s; }
 .sidebar::-webkit-scrollbar { display: none; }
 .sidebar::after { position: absolute; right: -42px; bottom: 72px; width: 130px; height: 130px; content: ''; border: 1px solid rgba(255,255,255,.09); border-radius: 50%; }
@@ -194,7 +194,7 @@ button { cursor: pointer; }
 [data-theme="dark"] .conversation-error { color: #f3b2a8; background: #492b28; }
 .future-space { min-width: 0; min-height: 0; }
 
-.app-shell--focus { grid-template-columns: minmax(0, 1fr) 412px minmax(0, 1fr); }
+.app-shell--focus { grid-template-columns: 32.5fr 35fr 32.5fr; }
 .app-shell--focus .sidebar { margin-left: -12px; opacity: 0; transform: translateX(-30px); pointer-events: none; }
 .loading-screen { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 18px; color: var(--primary); background: var(--paper); font-size: 12px; }
 
@@ -206,7 +206,7 @@ button { cursor: pointer; }
   .composer-wrap { padding-right: 12px; padding-left: 12px; }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1250px) {
   .app-shell { grid-template-columns: 236px 412px minmax(0, 1fr); }
   .app-shell--focus { grid-template-columns: minmax(0, 1fr) 412px minmax(0, 1fr); }
   .header-center { display: none; }

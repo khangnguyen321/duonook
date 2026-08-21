@@ -23,10 +23,10 @@ test('sent bubbles stay cream while received bubbles follow the selected palette
   assert.match(stylesSource, /\.message-row--own \.message-bubble \{[^}]*background: var\(--own-bubble\);/s);
 });
 
-test('desktop chat uses the Galaxy S26 Ultra viewport width without resize controls', () => {
-  assert.match(stylesSource, /\.app-shell \{[^}]*grid-template-columns: 284px 412px minmax\(0, 1fr\);/s);
-  assert.match(stylesSource, /\.app-shell--focus \{ grid-template-columns: minmax\(0, 1fr\) 412px minmax\(0, 1fr\); \}/);
-  assert.match(stylesSource, /@media \(max-width: 920px\)[^{]*\{[\s\S]*?\.app-shell \{ grid-template-columns: 236px 412px minmax\(0, 1fr\); \}/);
-  assert.match(stylesSource, /@media \(max-width: 920px\)[^{]*\{[\s\S]*?\.app-shell--focus \{ grid-template-columns: minmax\(0, 1fr\) 412px minmax\(0, 1fr\); \}/);
+test('wide desktop uses the requested 18.4/35/46.6 workspace split without resize controls', () => {
+  assert.match(stylesSource, /\.app-shell \{[^}]*grid-template-columns: 18\.4fr 35fr 46\.6fr;/s);
+  assert.match(stylesSource, /\.app-shell--focus \{ grid-template-columns: 32\.5fr 35fr 32\.5fr; \}/);
+  assert.match(stylesSource, /@media \(max-width: 1250px\)[^{]*\{[\s\S]*?\.app-shell \{ grid-template-columns: 236px 412px minmax\(0, 1fr\); \}/);
+  assert.match(stylesSource, /@media \(max-width: 1250px\)[^{]*\{[\s\S]*?\.app-shell--focus \{ grid-template-columns: minmax\(0, 1fr\) 412px minmax\(0, 1fr\); \}/);
   assert.doesNotMatch(appSource, /duonook-chat-width|chat-resizer|resizeChatWithKeyboard/);
 });

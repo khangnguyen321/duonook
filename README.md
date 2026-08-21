@@ -24,7 +24,7 @@ The complete Phase 1 website is implemented:
 - Sender-only message editing and deletion
 - Emoji reactions
 - Light and dark themes
-- Fixed 412px desktop chat panel matching the Galaxy S26 Ultra CSS viewport width
+- Proportional desktop workspace with an 18.4% sidebar, 35% chat, and 46.6% reserved area
 - Responsive desktop and mobile conversation layouts
 
 ## Run locally
@@ -60,10 +60,12 @@ The repository includes a production `Dockerfile`. It builds the Vite client and
 the Express, SQLite, and Socket.IO server in one non-root Node.js container. Deploy the
 repository as a **Docker service**, not as a static Vite/Nginx site.
 
-The publication branch is `main`. Verified changes are committed and pushed directly to
-`origin/main`; GitHub pull requests are not part of the normal DuoNook workflow. Each
-successful push to `main` automatically triggers NoiGate to rebuild the service and update
-the live page.
+The publication branch is `main`. Every completed and verified DuoNook task is
+automatically committed and pushed directly to `origin/main`; a separate push request and
+GitHub pull request are not part of the normal workflow. Each successful push to `main`
+automatically triggers NoiGate to rebuild the service and update the live page. Incomplete
+or failing work, secrets, private data, temporary QA artifacts, and unrelated changes are
+never included in an automatic push.
 
 Use these service settings:
 

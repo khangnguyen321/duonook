@@ -23,14 +23,15 @@ Use this lifecycle for every implementation checkpoint. Do not skip directly fro
 3. **Check the code:** review the complete changed surface for correctness, authorization, validation, error handling, maintainability, accessibility where relevant, and unintended regressions.
 4. **Debug and verify:** run focused tests plus the required project checks, investigate every failure, fix root causes, and add regression coverage for defects found.
 5. **Check the code again:** reread the final diff after fixes, remove temporary or dead code, confirm tests exercise meaningful behavior, and verify the result against the acceptance criteria.
-6. **Ship:** update `README.md` or `HANDOFF.md` when project state changed and deliver a concise summary with verification evidence and known limitations. Commit, push, open a pull request, deploy, or publish only when the user explicitly requests that external action.
+6. **Ship:** update `README.md` or `HANDOFF.md` when project state changed and deliver a concise summary with verification evidence and known limitations. For DuoNook, automatically commit and push each completed, verified task directly to `origin/main` under the project-specific policy below.
 
 If any check fails, return to the appropriate earlier step. Do not call a checkpoint complete while relevant failures, security gaps, or unreported blockers remain.
 
 ## Git publication and deployment
 
 - Use `main` as the working and publication branch for DuoNook. Do not create feature branches or GitHub pull requests unless the user explicitly asks for one.
-- When the user asks to **push**, stage only the intended verified files, commit them, and push directly to `origin/main`.
+- After every completed task or implementation checkpoint, stage only the intended verified files, commit them, and push directly to `origin/main` automatically. A separate user request to push is not required for this project.
+- Do not auto-push incomplete work, failing checks, known security defects, credentials, secrets, database/message content, temporary QA artifacts, or unrelated user changes. If the user explicitly says not to push a task, do not push it.
 - Never force-push. If remote `main` advanced, fetch it and reconcile safely before retrying the direct push.
 - A successful push to `origin/main` automatically triggers NoiGate to rebuild and update the live page. Do not create a separate GitHub pull request or manually deploy after a successful push.
 - After the automatic deployment, verify the health endpoint and the changed live behavior when access is available. Report deployment failures rather than silently treating the Git push as a live-site success.

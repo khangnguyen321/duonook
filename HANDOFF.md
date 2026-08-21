@@ -1,7 +1,7 @@
 # DuoNook Handoff
 
 **Last updated:** August 20, 2026
-**Current phase:** Complete Phase 1 website with fixed-width chat checkpoint implemented and verified
+**Current phase:** Complete Phase 1 website with proportional workspace checkpoint implemented and verified
 **Project direction:** Private, desktop-first messaging for exactly two approved people
 
 ## Product promise
@@ -37,7 +37,7 @@ DuoNook provides two spouses with one private browser-based conversation that wo
 - Compact sender avatars beside every message, aligned left for received messages and right for sent messages
 - Cream sent-message bubbles with palette-colored received-message bubbles
 - Distraction-free focus mode
-- Desktop chat is fixed at the Galaxy S26 Ultra's 412px CSS viewport width
+- Wide desktop workspace uses an 18.4% sidebar, 35% chat, and 46.6% reserved area
 - Reserved empty right workspace for future feature modules
 - Daily conversation prompt, one-tap affection note, and today's message count
 - Desktop and responsive mobile layouts
@@ -126,6 +126,8 @@ Two client-presentation regression tests cover sender-avatar placement and the s
 
 ## Fixed-width Galaxy S26 Ultra chat checkpoint
 
+This checkpoint is historical and was superseded by the proportional workspace checkpoint below.
+
 The desktop conversation is now fixed at `412px`, matching the Galaxy S26 Ultra's portrait CSS viewport width. The percentage-based width state, `duonook-chat-width` local-storage preference, pointer-drag behavior, keyboard resizing, and separator control were removed. The reserved right workspace remains available for future modules.
 
 Normal desktop mode uses the existing 284px sidebar (236px on medium screens), the fixed 412px chat, and the remaining workspace. Focus Mode keeps the chat at 412px and centers it between two flexible empty columns. At 700px and below, the responsive layout remains fluid: the sidebar and reserved area disappear and the chat fills the viewport, including an exact 412×891 Galaxy S26 Ultra viewport.
@@ -139,6 +141,14 @@ Browser verification measured:
 - no unexpected runtime or layout console errors.
 
 A focused client-presentation regression test covers the fixed desktop and Focus Mode columns and confirms that resize controls/storage are absent. The complete 10-test suite and production build pass.
+
+## Proportional desktop workspace checkpoint
+
+The wide desktop grid now divides its usable track space into exactly 18.4% sidebar, 35% chat panel, and 46.6% reserved right workspace. Fractional grid tracks make the three requested shares total 100% without allowing the outer padding or 12px gaps to create horizontal overflow. Focus Mode centers a 35% chat between equal 32.5% flexible columns.
+
+At widths of 1250px and below, the layout retains the practical 236px sidebar and 412px chat fallback so navigation and conversation content do not collapse. At 700px and below, the existing full-width mobile conversation remains unchanged.
+
+At the 1594×900 reference viewport, browser measurements were 284.45px (18.4%) for the sidebar, 541.11px (35%) for the chat, and 720.42px (46.6%) for the reserved workspace, with zero horizontal overflow. Focus Mode measured the same 541.11px/35% chat width and was centered within 0.01px. All 10 tests and the production build pass.
 
 ## NoiGate deployment correction
 
@@ -161,11 +171,13 @@ in `README.md`, and reissue the mismatched TLS certificate for `duonook.launchpo
 
 ## Publication workflow
 
-`main` is the working and publication branch. When the user requests a push, commit the
-verified scoped changes and push directly to `origin/main`; do not create a feature branch
-or GitHub pull request. Never force-push. A successful push to `main` automatically
-triggers NoiGate to rebuild the Docker service and update the live page. Verify the health
-endpoint and changed behavior after the automatic deployment when access is available.
+`main` is the working and publication branch. After every completed, verified task,
+automatically commit the scoped changes and push directly to `origin/main`; a separate
+push request is not required. Do not create a feature branch or GitHub pull request and
+never force-push. Never include incomplete or failing work, security defects, secrets,
+private data, temporary QA artifacts, or unrelated changes. A successful push to `main`
+automatically triggers NoiGate to rebuild the Docker service and update the live page.
+Verify the health endpoint and changed behavior after deployment when access is available.
 
 ## NoiGate status
 
